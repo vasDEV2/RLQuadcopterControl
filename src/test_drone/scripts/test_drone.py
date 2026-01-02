@@ -67,7 +67,7 @@ class Control(Node):
         self.yaw_rate = 0
         self.sim_dt = 0.02
         # self.model = ModelLoader("policy.pt")
-        self.model = LoadONNX()
+        self.model = LoadONNX("models/EpisodeV.onnx")
 
         self.Gz = -9.81
         self.mass = 2
@@ -127,7 +127,7 @@ class Control(Node):
         # print(f"ACTION 1: {action}")
         # action[1:4] = [0, 0, 0]
 
-        action[3] = 0.0
+        # action[3] = 0.0
 
         thrust = action
         print(thrust.shape)
@@ -166,27 +166,55 @@ class Control(Node):
         # temp = cv[0]
         # cv[0] = cv[1]
         # cv[1] = temp
+        # curr[0] = curr[0]
+        curr[0] = curr[0] - 0.5
         curr[1] = curr[1] + 0.5
+        # curr[2] = curr[2] + (0.5 - 0.05)
         # print("goal_local: ", goal_local)
         # eu = [0, 0, 0]
         # r = R.from_euler("zyx", eu)
         r = R.from_quat(self.vehicle.quats)
-        ang = r.as_euler("zyx", degrees=True)
-        ang[0] = 0
-        ang[2] = -ang[2]
+        print(self.vehicle.quats)
+
+        ned_to_enu = np.array([[0, 1, 0],
+                               [1, 0, 0],
+                               [0, 0, -1]])
+        
+        r_lfu_enu = ned_to_enu @ r.as_matrix() @ ned_to_enu.T
+
+        print(f"quats: {R.from_matrix(r_lfu_enu).as_quat()}")
+        # print(r.as_matrix())
+        
+        # r_enu = ned_to_enu @ r.as_matrix()
+
+        # print(r_enu)
+
+        angst = R.from_matrix(r_lfu_enu).as_euler("ZYX", degrees=True)
+
+        # angst[0] = 90 + angst[0]
+        angst[0] = 0
+
+        rrk = R.from_euler("ZYX", angst, degrees=True).as_matrix()
+
+        # ang[0] = 0
+        # ang[0] = 90-ang[0]
+        # ang[2] = -ang[2]
         # ang[2] = -ang[2]
         # print(f"EULER ZYX: {ang}")
-        rr = R.from_euler("zyx", ang, degrees=True)
+        rr = R.from_euler("ZXY", angst, degrees=True)
 
 
         # temp = ang[2]
         # ang[2] = ang[1]
         # ang[1] = temp
         # rr = R.from_euler
-        print(f"ANGLE : {ang}")
-        euler = rr.as_matrix()
+        print(f"ANGLE : {angst}")
+        # euler = rr.as_matrix()
+        # euler = r.as_matrix()
 
-        euler = np.reshape(euler, (9,), "F")
+        # euler = np.reshape(euler, (9,), "F")
+        # euler = np.reshape(euler, (9,), "F")
+        euler = np.reshape(rrk, (9,), "F")
         # print(len(self.vehicle.pos))
         obs = np.concatenate([curr, euler, self.vehicle.LV, self.vehicle.AV, [self.yaw_rate]]).astype(np.float32)
 
@@ -212,18 +240,19 @@ class Control(Node):
         # action[:,:, 1] = action[:,:, 1]
         # action[:, :, 3] = raw_action[:, :, 3]*5
         # action[:, :, 1] = 0
-        # action[1:4] = action[1:4]*5.
+        # action[1:4] = action[1:4]*5
         action = action.squeeze(0)
         action = action.squeeze(0)
+        # action[3] = -raw_action[:,:, 3]
         print(action.shape)
         # action[0] = min(action[0], 9.81*1.39)
         # action[0] = action[0]/(9.81*1.39)
-
+       
         thrust = self.get_thrust(action)
 
-        # print(f"Final trhsut {thrust}")
+        print(f"Final trhsut {thrust}")
 
-        self.yaw_rate += ang[0]*self.sim_dt
+        self.yaw_rate += 0*self.sim_dt
 
         return thrust
     

@@ -195,10 +195,10 @@ class Vehicle():
         # rates = rates.numpy()
         # msg3.NUM_CONTROLS = 4
         # msg3.control = [rates[0], rates[2], rates[3], rates[1], 0., 0., 0.,0.,0.,0.,0.,0.]
-        # msg3.control = [1., 1., 0., 0., 0., 0., 0.,0.,0.,0.,0.,0.]
+        # msg3.control = [0.7, 0., 0.7, 0., 0., 0., 0.,0.,0.,0.,0.,0.]
         # msg3.control = [1., 0., 1., 0.]
         # msg3.control = [-rates[0], -rates[1], , 0.99937262, 0., 0., 0.,0.,0.,0.,0.,0.]
 
-        print(f"MESSAGE: {msg}")
+        # print(f"MESSAGE: {msg}")
 
         self.ctbr_pub.publish(msg)
