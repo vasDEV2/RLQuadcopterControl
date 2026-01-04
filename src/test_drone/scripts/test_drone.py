@@ -2,9 +2,9 @@ import rclpy
 from rclpy.node import Node
 from px4_msgs.msg import VehicleOdometry, SensorCombined, VehicleRatesSetpoint, TrajectorySetpoint, VehicleCommand, VehicleStatus, OffboardControlMode
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
-import torch
+# import torch
 from vehicle import Vehicle
-from model import ModelLoader, LoadONNX
+from model import LoadONNX
 import numpy as np
 import math
 from scipy.spatial.transform import Rotation as R
@@ -168,7 +168,7 @@ class Control(Node):
         # cv[1] = temp
         # curr[0] = curr[0]
         curr[0] = curr[0] - 0.5
-        curr[1] = curr[1] + 0.5
+        # curr[1] = curr[1] + 0.5
         # curr[2] = curr[2] + (0.5 - 0.05)
         # print("goal_local: ", goal_local)
         # eu = [0, 0, 0]
@@ -223,7 +223,7 @@ class Control(Node):
         raw_action = self.model.predict(obs)
         print(f"RAW_ACTION: {raw_action}")
 
-        raw_action = raw_action.numpy()
+        # raw_action = raw_action.numpy()
         print(raw_action.shape)
 
         action = np.zeros((raw_action.shape))

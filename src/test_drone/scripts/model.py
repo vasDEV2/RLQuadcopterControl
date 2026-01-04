@@ -1,4 +1,4 @@
-import torch
+# import torch
 import onnxruntime as ort
 import numpy as np
 from scipy.spatial.transform import Rotation as R 
@@ -16,33 +16,34 @@ class LoadONNX:
     def predict(self, obs):
 
         result = self.sess.run(None, {self.input_name: obs})
-        result = torch.tensor(result)
-        result = torch.tanh(result)
+        # result = torch.tensor(result)
+        # result = torch.tanh(result)
+        result = np.tanh(result)
 
         return result
 
-class ModelLoader:
-    def __init__(self, checkpoint_path, device=None):
-        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+# class ModelLoader:
+#     def __init__(self, checkpoint_path, device=None):
+#         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Load model object directly
-        self.model = torch.jit.load(checkpoint_path)
-        # Access normalizer
-        print(self.model)
-        norm = self.model.normalizer
+#         # Load model object directly
+#         self.model = torch.jit.load(checkpoint_path)
+#         # Access normalizer
+#         print(self.model)
+#         norm = self.model.normalizer
 
-        print("Normalizer state_dict:")
-        for k, v in norm.state_dict().items():
-            print(k, v.shape, v)
+#         print("Normalizer state_dict:")
+#         for k, v in norm.state_dict().items():
+#             print(k, v.shape, v)
 
-        # self.model.to(self.device)
-        self.model.eval()
+#         # self.model.to(self.device)
+#         self.model.eval()
 
-    def predict(self, x):
-        # x = x.to(self.device)
-        # with torch.no_grad():
-        # x = self.model.normalizer(x)
-        return self.model(x)
+#     def predict(self, x):
+#         # x = x.to(self.device)
+#         # with torch.no_grad():
+#         # x = self.model.normalizer(x)
+#         return self.model(x)
         
 # Initialize
 # loader = ModelLoader("policy.pt")
