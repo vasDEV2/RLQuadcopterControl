@@ -1,6 +1,6 @@
 import rclpy
 from rclpy.node import Node
-from px4_msgs.msg import VehicleOdometry, SensorCombined, VehicleRatesSetpoint, TrajectorySetpoint, VehicleCommand, VehicleStatus, OffboardControlMode, VehicleAttitude, VehicleTorqueSetpoint, ActuatorMotors
+from px4_msgs.msg import VehicleOdometry, SensorCombined, VehicleRatesSetpoint, TrajectorySetpoint, VehicleCommand, VehicleStatus, OffboardControlMode, VehicleAttitude, VehicleTorqueSetpoint, ActuatorMotors, VehicleLocalPosition
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
 import torch
 from enum import IntEnum
@@ -49,9 +49,10 @@ class Vehicle():
         self.offboard = False
         self.sp_count = 0
         self.quats = [1,2,1,2]
+        self.odom = False
 
         # ---- Examples: Create a subscription ----
-        self.odometry_sub = self.node.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, qos_sub)
+        self.odometry_sub = self.node.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.odometry_callback, qos_sub)
         self.imu_gyro_sub = self.node.create_subscription(SensorCombined, '/fmu/out/sensor_combined', self.imu_gyro_callback, qos_sub)
         self.status_sub = self.node.create_subscription(VehicleStatus, 'fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_sub)
         self.attitude_sub = self.node.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude', self.attitude_callback, qos_sub)
@@ -66,8 +67,10 @@ class Vehicle():
 
     def odometry_callback(self, msg):
 
-        self.pos = [-msg.position[0]/10, msg.position[1]/10, -msg.position[2]/10]
-        self.LV = [-msg.velocity[0]/10, msg.velocity[1]/10, -msg.velocity[2]/10]
+        self.odom = True
+
+        self.pos = [msg.y/10, msg.x/10, -msg.z/10]
+        self.LV = [msg.vy/10, msg.vx/10, -msg.vz/10]
         # self.LV = msg.velocity/10
         # self.LV[2] = -self.LV[2]
 
@@ -127,18 +130,24 @@ class Vehicle():
         self.cmd_pub.publish(msg)
         # self.node.get_logger().info("Sent ARM command")
 
-    def offboard_control(self):
+    def offboard_control(self, b="actuator"):
+        bb = False
+        mm = False
+        if b == "position":
+            bb = True
+        else:
+            mm = True
 
         offboard_msg = OffboardControlMode()
         offboard_msg.timestamp = int(self.node.get_clock().now().nanoseconds / 1000)
 
-        offboard_msg.position = False
+        offboard_msg.position = bb
         offboard_msg.velocity = False
         offboard_msg.acceleration = False
         offboard_msg.attitude = False
-        offboard_msg.body_rate = True
+        offboard_msg.body_rate = False
         offboard_msg.thrust_and_torque = False
-        offboard_msg.direct_actuator = False
+        offboard_msg.direct_actuator = mm
 
         self.publisher_offboard_mode.publish(offboard_msg)
 
@@ -165,6 +174,7 @@ class Vehicle():
 
         trajectory_msg = TrajectorySetpoint()
 
+
     
         trajectory_msg.position[0] = pos[0]
         trajectory_msg.position[1] = pos[1]
@@ -176,7 +186,7 @@ class Vehicle():
         msg = VehicleRatesSetpoint()
         msg2 = VehicleTorqueSetpoint()
         msg3 = ActuatorMotors()
-        print(rates)
+        # print(rates)
         # msg.timestamp = int(self.node.get_clock().now().nanoseconds / 1000)
         # msg.roll = rates[1].item()
         # msg.pitch = rates[2].item()
@@ -185,20 +195,26 @@ class Vehicle():
         #     rates[0] = 1
         # elif -rates[0] > 0:
         #     rates[0] = 0
-        msg.thrust_body = [0., 0., -rates[0]]
-        msg.roll = rates[2]
-        msg.pitch = rates[1]
-        msg.yaw = rates[3]
+        # msg.thrust_body = [0., 0., -rates[0]]
+        # msg.thrust_body = [0., 0., -0.5]
+        # msg.roll = rates[2]
+        # msg.roll = rates[2]
+        # msg.roll = 0.
+        # msg.pitch = 0.
+        # msg.pitch = rates[1]
+        # msg.yaw = rates[3]
+        # msg.yaw = 0.
         # msg2.xyz = [0., 0., 1.0]
         # rates = rates.squeeze(0)
         # rates = rates.squeeze(0)
         # rates = rates.numpy()
         # msg3.NUM_CONTROLS = 4
-        # msg3.control = [rates[0], rates[2], rates[3], rates[1], 0., 0., 0.,0.,0.,0.,0.,0.]
-        # msg3.control = [0.7, 0., 0.7, 0., 0., 0., 0.,0.,0.,0.,0.,0.]
+        # print(len([rates[0], rates[1], rates[2], rates[3], 0., 0., 0.,0.,0.,0.,0.,0.]))
+        msg3.control = [rates[0], rates[1], rates[2], rates[3], 0., 0., 0.,0.,0.,0.,0.,0.]
+        # msg3.control = [1.0, 1.0, 0.78, 0.78, 0., 0., 0.,0.,0.,0.,0.,0.]
         # msg3.control = [1., 0., 1., 0.]
         # msg3.control = [-rates[0], -rates[1], , 0.99937262, 0., 0., 0.,0.,0.,0.,0.,0.]
 
-        # print(f"MESSAGE: {msg}")
+        # print(f"MESSAGE: {msg3}")
 
-        self.ctbr_pub.publish(msg)
+        self.motor_pub.publish(msg3)

@@ -7,6 +7,7 @@ from vehicle import Vehicle
 from model import LoadONNX
 import numpy as np
 import math
+import time
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
@@ -60,14 +61,16 @@ class Control(Node):
     
     def __init__(self, target_pos):
         super().__init__('drone_control')   # Node name
-        self.get_logger().info("Control has started!")        
+        self.get_logger().info("Control has started!")    
+        self.time = time.time()    
         self.vehicle = Vehicle(self)
         self.target = target_pos
         self.i = 0
+        self.y = 0
         self.yaw_rate = 0
-        self.sim_dt = 0.02
+        self.sim_dt = 0.001
         # self.model = ModelLoader("policy.pt")
-        self.model = LoadONNX("models/EpisodeV.onnx")
+        self.model = LoadONNX("/home/vasudevan/Documents/actor_update2.onnx")
 
         self.Gz = -9.81
         self.mass = 2
@@ -109,10 +112,20 @@ class Control(Node):
         self.action_array = np.load("/home/vasudevan/Desktop/flightmare/flightrl/examples/actions_anh.npy")
 
         # ---- Examples: Create a timer ----
-        timer_period = 0.02  # seconds
+        timer_period = 0.001  # seconds
         self.timer = self.create_timer(timer_period, self.timer_callback)
         self.a = []
         self.maxthrst = 9.4618
+
+
+        self.allocat = np.array([
+            [1.0, 1.0, 1.0, 1.0],
+            [-0.13, 0.13, 0.13, -0.13],
+            [-0.13, 0.13, -0.13, 0.13],
+            [-0.025, 0.025, -0.025, 0.025],
+        ])
+
+        self.inv_a = np.linalg.pinv(self.allocat)
 
     def get_thrust(self, action):
 
@@ -150,7 +163,83 @@ class Control(Node):
 
 
         return thrust
+    
+    def direct_motor(self):
 
+        # curr = [0, 0, 0 - self.vehicle.pos[2]]
+        # vel = [0, 0, self.vehicle.LV[2]]
+
+        curr = self.vehicle.pos.copy()
+
+        # print(curr[2])
+
+        curr[2] = 0.7 - curr[2]
+        curr[0] = 1.0 - curr[0]
+        curr[1] = 1.0 - curr[1]
+        print(f"pos: {self.vehicle.pos}")
+        # print(f'HEIGHT: {curr[2]}')
+        # curr[1] = curr[1] - 2.0
+
+        q = self.vehicle.quats.copy()
+
+        r = R.from_quat(q)
+
+        ned_to_enu = np.array([[0, 1, 0],
+                               [1, 0, 0],
+                               [0, 0, -1]])
+        
+        r_lfu_enu = ned_to_enu @ r.as_matrix() @ ned_to_enu.T
+
+        eu = R.from_matrix(r_lfu_enu).as_euler("ZYX", degrees=True)
+
+
+        # print(f"ANGLE: {eu}")
+        # print(f"Angular vel: {self.vehicle.AV}")
+
+        mat = r_lfu_enu.reshape((9))
+
+        # eu = R.from_quat(q).as_euler('ZYX', degrees=True)
+
+        # eu[0] = -eu[0]
+        # eu[1] = -eu[1]
+
+        # mat = R.from_euler('ZYX', eu, degrees=True).as_matrix().reshape((9))
+
+        obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV]).astype(np.float32)
+
+        # print(f"OBSERVATION {obs}")
+
+        obs = np.expand_dims(obs, axis=0)
+        # print(f"OBSERVATION: {obs}")
+        raw_action = self.model.predict(obs)
+
+        raw_action = raw_action.squeeze(0)
+        # raw_action = raw_action.squeeze(0)
+
+        raw_action = (raw_action+1)/2
+        raw_action = np.clip(raw_action, 0.0, 1.0)
+
+        # print(raw_action.shape)
+        raw_action = raw_action.squeeze(0)
+
+        raw_action = raw_action
+        # thrust_transformed = self.allocat @ raw_action.T
+
+        # # print(f"Transformed: {thrust_transformed}")
+
+        # thrust_transformed[0] = thrust_transformed[0]*1.47
+
+        # # print(self.inv_a)
+
+        # motor = self.inv_a @ thrust_transformed.T
+        # motor = motor.tolist()
+
+        raw_action = raw_action.tolist()
+        # print(raw_action)
+        action = [raw_action[2], raw_action[3], raw_action[1], raw_action[0]]
+
+        return action
+            
     def get_control(self):
 
         print(f"CURRENT POS: {self.vehicle.pos}")
@@ -221,7 +310,7 @@ class Control(Node):
         obs = np.expand_dims(obs, axis=0)
         # print(f"OBSERVATION: {obs}")
         raw_action = self.model.predict(obs)
-        print(f"RAW_ACTION: {raw_action}")
+        # print(f"RAW_ACTION: {raw_action}")
 
         # raw_action = raw_action.numpy()
         print(raw_action.shape)
@@ -292,10 +381,20 @@ class Control(Node):
 
     def timer_callback(self):
 
+        if not self.vehicle.odom:
+            return
+
+
         if not self.vehicle.offboard:
             self.vehicle.enable_offboard()
             return
         
+        if self.y%1000 == 0:
+            # self.time = time.time() - self.time
+            print("time:", time.time() - self.time)
+            self.time = time.time()
+
+
         # yo = np.array([ 18.8423, 0.00409635, 0.010741, 0.2])
 
         # yoyo = self.inverse_allocat @ yo
@@ -310,15 +409,23 @@ class Control(Node):
         #     self.vehicle.offboard_control()
         #     self.vehicle.publish_ctbr(thrust)
         #     self.i += 1
-        thrust = self.get_control()
+        thrust = self.direct_motor()
         # thrust = [1,2,3,4]
-        self.vehicle.offboard_control()
-        # print(f"THRUST : {thrust}")
-        self.vehicle.publish_ctbr(thrust)
+        # self.vehicle.offboard_control()
+        # # # print(f"THRUST : {thrust}")
+        # self.vehicle.publish_ctbr(thrust)
+
+        self.y += 1
 
         # print("ACC: ", self.vehicle.LA[2])
 
-        # self.vehicle.set_trajectory([5, 0, -5])
+        if self.y <= 10000:
+        # if True:
+            self.vehicle.offboard_control("position")
+            self.vehicle.set_trajectory([0, 0, -5.0])
+        else:
+            self.vehicle.offboard_control()
+            self.vehicle.publish_ctbr(thrust)
         
        
 

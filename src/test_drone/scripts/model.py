@@ -18,7 +18,8 @@ class LoadONNX:
         result = self.sess.run(None, {self.input_name: obs})
         # result = torch.tensor(result)
         # result = torch.tanh(result)
-        result = np.tanh(result)
+        # result = np.tanh(result)
+        result = np.clip(result, -1, 1)
 
         return result
 
