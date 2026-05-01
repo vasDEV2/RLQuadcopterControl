@@ -12,6 +12,7 @@ from scipy.spatial.transform import Rotation as R
 
 import numpy as np
 from scipy.spatial.transform import Rotation as R
+import pickle
 
 def gravity_in_frd(px4_quat, vector):
     """
@@ -70,7 +71,12 @@ class Control(Node):
         self.yaw_rate = 0
         self.sim_dt = 0.001
         # self.model = ModelLoader("policy.pt")
-        self.model = LoadONNX("/home/vasudevan/Documents/actor_update2.onnx")
+        # self.model = LoadONNX("/home/vasudevan/Desktop/actor_random2.onnx")
+        # self.model = LoadONNX("/home/vasudevan/Desktop/actor_nh2.onnx")
+        self.model = LoadONNX("/home/vasudevan/test_model/test_rigour_1")
+        # self.policy = LoadONNX("/home/vasudevan/Documents/policy_test_1.onnx")
+
+        self.action_storage = []
 
         self.Gz = -9.81
         self.mass = 2
@@ -113,7 +119,8 @@ class Control(Node):
 
         # ---- Examples: Create a timer ----
         timer_period = 0.001  # seconds
-        self.timer = self.create_timer(timer_period, self.timer_callback)
+        self.timer1 = self.create_timer(0.01, self.timer_callback)
+        # self.timer2 = self.create_timer(0.01, self.timer_callback2)
         self.a = []
         self.maxthrst = 9.4618
 
@@ -126,6 +133,272 @@ class Control(Node):
         ])
 
         self.inv_a = np.linalg.pinv(self.allocat)
+        self.action_history = np.zeros((1, 22, 100))
+        self.action_history = self.action_history.astype(np.float32)
+        self.action_prev= np.zeros((4))
+        self.obs_prim = None
+        self.adaption_vector = np.zeros((8))
+        self.yo = False
+        self.kkk = 0
+
+        self.infinty = self.generate_infinity()
+        self.wp_num = 0
+
+
+    def generate_infinity(self, num_points=1000, scale=1.0):
+        """
+        Lemniscate of Gerono (∞ shape)
+        """
+        t = np.linspace(0, 2*np.pi, num_points)
+        x = scale * np.sin(t)
+        y = scale * np.sin(t) * np.cos(t)
+        return np.vstack((x, y)).T
+
+
+    def generate_s_curve(self, num_points=1000, scale=1.0):
+        """
+        Smooth S curve using tanh
+        """
+        t = np.linspace(-2, 2, num_points)
+        x = scale * t
+        y = scale * np.tanh(t)
+        return np.vstack((x, y)).T
+
+
+    def generate_straight_line(self, num_points=1000, start=(0, 0), end=(5, 0)):
+        """
+        Straight line interpolation
+        """
+        x = np.linspace(start[0], end[0], num_points)
+        y = np.linspace(start[1], end[1], num_points)
+        return np.vstack((x, y)).T
+
+    def timer_callback2(self):
+
+        if not self.yo:
+            return
+
+        self.action_history = np.roll(self.action_history, -1, -1)
+        self.action_history[:, :, -1] = np.concat([self.obs_prim, self.action_prev])
+        self.action_history = self.action_history.astype(np.float32)
+
+        self.adaption_vector = self.model_history.predict(self.action_history)
+        # print(f"adaption vector: {adaption_vector}")    
+        self.adaption_vector = self.adaption_vector[0].squeeze(0)
+
+    def adaption_policy(self):
+
+        # self.action_history = np.roll(self.action_history, -1, -1)
+
+        curr = self.vehicle.pos.copy()
+        # print(f"position {curr}")
+
+        curr[2] = 0.5 - curr[2]
+        curr[0] = 0.0 - curr[0]
+        curr[1] = 0.0 - curr[1]
+
+        q = self.vehicle.quats.copy()
+        r = R.from_quat(q)
+        ned_to_enu = np.array([[0, 1, 0],
+                               [1, 0, 0],
+                               [0, 0, -1]])
+        r_lfu_enu = ned_to_enu @ r.as_matrix() @ ned_to_enu.T
+        mat = r_lfu_enu.reshape((9))
+
+        self.obs_prim = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV]).astype(np.float32)
+        obs = np.expand_dims(self.obs_prim, axis=0)
+        # self.action_history[:, :, -1] = np.concat([self.obs_prim, self.action_prev])
+
+        raw_command = self.policy.predict((obs, self.action_history))
+
+        raw_actions = np.clip(raw_command, -1, 1)
+        # self.action_prev = raw_actions.squeeze(0).squeeze()
+        action = (raw_actions + 1)/2
+
+        action = action.squeeze(0).squeeze()
+        # self.action_prev = action.copy()
+        action = action.tolist()
+        action = [action[2], action[3], action[1], action[0]]
+
+        return action
+
+    def get_random(self):
+
+        curr = self.vehicle.pos.copy()
+        # print(f"position {curr}")
+
+        curr[2] = 0.5 - curr[2]
+        curr[0] = 0.5 - curr[0]
+        curr[1] = 0.5 - curr[1]
+
+        q = self.vehicle.quats.copy()
+        r = R.from_quat(q)
+        ned_to_enu = np.array([[0, 1, 0],
+                               [1, 0, 0],
+                               [0, 0, -1]])
+        r_lfu_enu = ned_to_enu @ r.as_matrix() @ ned_to_enu.T
+        mat = r_lfu_enu.reshape((9))
+
+        self.obs_prim = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV]).astype(np.float32)
+        
+        # self.action_history = np.roll(self.action_history, -1, -1)
+        # self.action_history[:, :, -1] = np.concat([obs_prim, self.action_prev])
+        # self.action_history = self.action_history.astype(np.float32)
+
+        # adaption_vector = self.model_history.predict(self.action_history)
+        # # print(f"adaption vector: {adaption_vector}")    
+        # adaption_vector = adaption_vector[0].squeeze(0)
+        # adaption_vector = np.zeros((8))
+
+        # print(f"adaption vector: {adaption_vector}")
+        # adaption_vector = np.array(([-0.0016, -0.0026,  0.0038, -0.0011,  0.0009, -0.0003,  0.0021,  0.0071]))
+        # adaption_vector = np.array(([-0.0017, -0.0027,  0.0038, -0.0012,  0.0009, -0.0003,  0.0021,  0.0072]))
+
+        obs = np.concatenate([self.obs_prim, self.adaption_vector]).astype(np.float32)
+        obs = np.expand_dims(obs, axis=0)
+        
+        raw_actions = self.model.predict(obs)
+        
+        raw_actions = np.clip(raw_actions, -1, 1)
+        self.action_prev = raw_actions.squeeze(0).squeeze()
+        action = (raw_actions + 1)/2
+
+        # action = (action*(1000 - 150) + 150)/1000
+
+        action = action.squeeze(0).squeeze()
+        # self.action_prev = action.copy()
+        action = action.tolist()
+        action = [action[2], action[3], action[1], action[0]]
+        # self.yo = True
+
+        # print(action)
+
+        return action
+    
+    def get_thrust(self, action):
+
+        action[0] = action[0]*self.mass
+
+        # err = action[1:4] - self.vehicle.AV
+        # print(f"error {err}")
+        # print(f"av {self.vehicle.AV}")
+
+        # action[1:4] = self.inertia @ self.kin_inv @ err + np.cross(self.vehicle.AV, self.inertia @ self.vehicle.AV)
+
+        # print(f"ACTION 1: {action}")
+        # action[1:4] = [0, 0, 0]
+
+        # action[3] = 0.0
+
+        thrust = action
+        print(thrust.shape)
+
+        # thrust = self.inverse_allocat @ action
+
+        # print(f"ACTION 2: {thrust}")
+
+        # thrust /= (9.81*2*self.mass/4)
+        # thrust /= self.maxthrst
+
+        thrust[0] = thrust[0]/(self.maxthrst*4)
+
+        thrust[0] = np.clip(thrust[0], 0, 1.0)
+        # print(f"ACTION 3: {thrust}")
+        # omega_cmd = np.sqrt(thrust)
+        thrust[0] = np.sqrt(thrust[0])
+
+        # print(f"ACTION 4: {omega_cmd}")
+
+
+        return thrust
+    
+    def direct_motor_rebrand(self, wp):
+
+        # curr = [0, 0, 0 - self.vehicle.pos[2]]
+        # vel = [0, 0, self.vehicle.LV[2]]
+
+        curr = self.vehicle.pos.copy()
+
+        # print(curr[2])
+
+        curr[2] = 4.0/5 - curr[2]/5
+        curr[0] = wp[0]/5 - curr[0]/5
+        curr[1] = wp[1]/5 - curr[1]/5
+
+        self.error = math.sqrt(curr[0]**2 + curr[1]**2)
+        # curr /= 5
+        # print(f"pos: {self.vehicle.pos}")
+        # print(f'HEIGHT: {curr[2]}')
+        # curr[1] = curr[1] - 2.0
+
+        q = self.vehicle.quats.copy()
+
+        r = R.from_quat(q)
+
+        ned_to_enu = np.array([[0, 1, 0],
+                               [1, 0, 0],
+                               [0, 0, -1]])
+        
+        r_lfu_enu = ned_to_enu @ r.as_matrix() @ ned_to_enu.T
+
+        eu = R.from_matrix(r_lfu_enu).as_euler("ZYX")
+
+
+        # print(f"ANGLE: {eu}")
+        # print(f"Angular vel: {self.vehicle.AV}")
+        # print("MATRIX FULL:", r_lfu_enu)
+        mat_res = r_lfu_enu[0:2, :]
+        mat = np.reshape(mat_res, (6))
+
+        # print("SENT:", mat)
+
+        # eu = R.from_quat(q).as_euler('ZYX', degrees=True)
+
+        # eu[0] = -eu[0]
+        # eu[1] = -eu[1]
+
+        # mat = R.from_euler('ZYX', eu, degrees=True).as_matrix().reshape((9))
+        # tt = np.zeros((8,))
+        obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV, [2.11]]).astype(np.float32)
+
+        # print(f"OBSERVATION {obs}")
+
+        obs = np.expand_dims(obs, axis=0)
+        print(f"OBSERVATION : {obs}")
+        raw_action = self.model.predict(obs)
+        print(raw_action)
+        raw_action = raw_action.squeeze(0)
+        # raw_action = raw_action.squeeze(0)
+
+        raw_action = (raw_action+1)/2
+        raw_action = np.clip(raw_action, 0.0, 1.0)
+
+        # print(raw_action.shape)
+        raw_action = raw_action.squeeze(0)
+
+        raw_action = (np.sqrt(raw_action))*1000
+
+        raw_action = (raw_action-150)/850
+
+        # raw_action = (raw_action*850 + 150)/1000
+        # thrust_transformed = self.allocat @ raw_action.T
+
+        # # print(f"Transformed: {thrust_transformed}")
+
+        # thrust_transformed[0] = thrust_transformed[0]*1.47
+
+        # # print(self.inv_a)
+
+        # motor = self.inv_a @ thrust_transformed.T
+        # motor = motor.tolist()
+
+        raw_action = raw_action.tolist()
+        # print(raw_action)
+        # action = [raw_action[0], raw_action[1], raw_action[2], raw_action[3]]
+        action = [raw_action[2], raw_action[3], raw_action[1], raw_action[0]]
+
+        return action
+        
 
     def get_thrust(self, action):
 
@@ -173,10 +446,10 @@ class Control(Node):
 
         # print(curr[2])
 
-        curr[2] = 0.7 - curr[2]
-        curr[0] = 1.0 - curr[0]
-        curr[1] = 1.0 - curr[1]
-        print(f"pos: {self.vehicle.pos}")
+        curr[2] = 0.5 - curr[2]
+        curr[0] = 0.5 - curr[0]
+        curr[1] = 0.5 - curr[1]
+        # print(f"pos: {self.vehicle.pos}")
         # print(f'HEIGHT: {curr[2]}')
         # curr[1] = curr[1] - 2.0
 
@@ -204,7 +477,7 @@ class Control(Node):
         # eu[1] = -eu[1]
 
         # mat = R.from_euler('ZYX', eu, degrees=True).as_matrix().reshape((9))
-
+        # tt = np.zeros((8,))
         obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV]).astype(np.float32)
 
         # print(f"OBSERVATION {obs}")
@@ -212,7 +485,7 @@ class Control(Node):
         obs = np.expand_dims(obs, axis=0)
         # print(f"OBSERVATION: {obs}")
         raw_action = self.model.predict(obs)
-
+        # print(raw_action)
         raw_action = raw_action.squeeze(0)
         # raw_action = raw_action.squeeze(0)
 
@@ -389,10 +662,13 @@ class Control(Node):
             self.vehicle.enable_offboard()
             return
         
-        if self.y%1000 == 0:
+        if self.y%100 == 0:
             # self.time = time.time() - self.time
-            print("time:", time.time() - self.time)
+            # print("time:", time.time() - self.time)
+            self.kkk += time.time() - self.time
             self.time = time.time()
+            # self.kkk += s
+            print(f"Time elapsed {self.kkk}")
 
 
         # yo = np.array([ 18.8423, 0.00409635, 0.010741, 0.2])
@@ -409,9 +685,10 @@ class Control(Node):
         #     self.vehicle.offboard_control()
         #     self.vehicle.publish_ctbr(thrust)
         #     self.i += 1
-        thrust = self.direct_motor()
+        thrust = self.direct_motor_rebrand(self.infinty[self.wp_num])
+        # thrust = self.get_thrust()
         # thrust = [1,2,3,4]
-        # self.vehicle.offboard_control()
+        # self.vehicle.offboard_control("position")
         # # # print(f"THRUST : {thrust}")
         # self.vehicle.publish_ctbr(thrust)
 
@@ -419,13 +696,32 @@ class Control(Node):
 
         # print("ACC: ", self.vehicle.LA[2])
 
-        if self.y <= 10000:
+        if self.y <= 1000:
         # if True:
             self.vehicle.offboard_control("position")
-            self.vehicle.set_trajectory([0, 0, -5.0])
+            self.vehicle.set_trajectory([0, 0, -4.0])
+        # self.vehicle.offboard_control("position")
+        # self.vehicle.set_trajectory([0, 0, -1.0])
         else:
+            print("EHYOOOOOOOO")
+        
             self.vehicle.offboard_control()
             self.vehicle.publish_ctbr(thrust)
+        
+            # if self.y >= 13000 and self.y <=20000: 
+            #     self.action_storage.append(self.action_history)
+            # if self.y == 20002:
+            #     # with open("action_history.pkl", 'wb') as f:
+
+            #     #     pickle.dump({"action": self.action_storage}, f)
+            #     np.savez("actions.npz", self.action_storage)
+
+            #     print("SAVED FILE!")
+
+        if self.error <= 0.1:
+            self.wp_num += 1
+        if self.wp_num >= 1000:
+            self.wp_num = 0
         
        
 

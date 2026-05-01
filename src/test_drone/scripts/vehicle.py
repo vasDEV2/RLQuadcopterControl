@@ -54,6 +54,7 @@ class Vehicle():
         # ---- Examples: Create a subscription ----
         self.odometry_sub = self.node.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.odometry_callback, qos_sub)
         self.imu_gyro_sub = self.node.create_subscription(SensorCombined, '/fmu/out/sensor_combined', self.imu_gyro_callback, qos_sub)
+        # self.imu_gyro_sub = self.node.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.imu_gyro_callback, qos_sub)
         self.status_sub = self.node.create_subscription(VehicleStatus, 'fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_sub)
         self.attitude_sub = self.node.create_subscription(VehicleAttitude, '/fmu/out/vehicle_attitude', self.attitude_callback, qos_sub)
         
@@ -69,8 +70,8 @@ class Vehicle():
 
         self.odom = True
 
-        self.pos = [msg.y/10, msg.x/10, -msg.z/10]
-        self.LV = [msg.vy/10, msg.vx/10, -msg.vz/10]
+        self.pos = [msg.y, msg.x, -msg.z]
+        self.LV = [msg.vy, msg.vx, -msg.vz]
         # self.LV = msg.velocity/10
         # self.LV[2] = -self.LV[2]
 
@@ -86,6 +87,7 @@ class Vehicle():
     def imu_gyro_callback(self, msg):
         self.LA = msg.accelerometer_m_s2
         self.AV = [msg.gyro_rad[1], msg.gyro_rad[0], -msg.gyro_rad[2]]
+        # self.AV = [msg.angular_velocity[1], msg.angular_velocity[0], -msg.angular_velocity[2]]
         # self.AV = msg.gyro_rad
 
     def vehicle_status_callback(self, msg):
@@ -211,8 +213,8 @@ class Vehicle():
         # msg3.NUM_CONTROLS = 4
         # print(len([rates[0], rates[1], rates[2], rates[3], 0., 0., 0.,0.,0.,0.,0.,0.]))
         msg3.control = [rates[0], rates[1], rates[2], rates[3], 0., 0., 0.,0.,0.,0.,0.,0.]
-        # msg3.control = [1.0, 1.0, 0.78, 0.78, 0., 0., 0.,0.,0.,0.,0.,0.]
-        # msg3.control = [1., 0., 1., 0.]
+        # msg3.control = [1., 1., 1., 1., 0., 0., 0.,0.,0.,0.,0.,0.]
+        # msg3.control = [1., 0., 0., 0.]
         # msg3.control = [-rates[0], -rates[1], , 0.99937262, 0., 0., 0.,0.,0.,0.,0.,0.]
 
         # print(f"MESSAGE: {msg3}")

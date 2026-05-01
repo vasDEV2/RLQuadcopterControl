@@ -14,14 +14,17 @@ class LoadONNX:
         self.input_name = self.sess.get_inputs()[0].name
 
     def predict(self, obs):
-
+        # print("Yo")
         result = self.sess.run(None, {self.input_name: obs})
+        # result = self.sess.run(None, {"x": obs[0],
+        #                               "y": obs[1]})
         # result = torch.tensor(result)
         # result = torch.tanh(result)
         # result = np.tanh(result)
         result = np.clip(result, -1, 1)
 
         return result
+    
 
 # class ModelLoader:
 #     def __init__(self, checkpoint_path, device=None):
