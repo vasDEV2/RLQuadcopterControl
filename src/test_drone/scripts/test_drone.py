@@ -141,7 +141,8 @@ class Control(Node):
         self.yo = False
         self.kkk = 0
 
-
+        self.infinty = self.generate_infinity()
+        self.wp_num = 0
 
 
     def generate_infinity(self, num_points=1000, scale=1.0):
@@ -311,7 +312,7 @@ class Control(Node):
 
         return thrust
     
-    def direct_motor_rebrand(self):
+    def direct_motor_rebrand(self, wp):
 
         # curr = [0, 0, 0 - self.vehicle.pos[2]]
         # vel = [0, 0, self.vehicle.LV[2]]
@@ -321,9 +322,10 @@ class Control(Node):
         # print(curr[2])
 
         curr[2] = 4.0/5 - curr[2]/5
-        curr[0] = 0.0/5 - curr[0]/5
-        curr[1] = 0.0/5 - curr[1]/5
+        curr[0] = wp[0]/5 - curr[0]/5
+        curr[1] = wp[1]/5 - curr[1]/5
 
+        self.error = math.sqrt(curr[0]**2 + curr[1]**2)
         # curr /= 5
         # print(f"pos: {self.vehicle.pos}")
         # print(f'HEIGHT: {curr[2]}')
@@ -683,7 +685,7 @@ class Control(Node):
         #     self.vehicle.offboard_control()
         #     self.vehicle.publish_ctbr(thrust)
         #     self.i += 1
-        thrust = self.direct_motor_rebrand()
+        thrust = self.direct_motor_rebrand(self.infinty[self.wp_num])
         # thrust = self.get_thrust()
         # thrust = [1,2,3,4]
         # self.vehicle.offboard_control("position")
@@ -716,7 +718,10 @@ class Control(Node):
 
             #     print("SAVED FILE!")
 
-        
+        if self.error <= 0.1:
+            self.wp_num += 1
+        if self.wp_num >= 1000:
+            self.wp_num = 0
         
        
 
