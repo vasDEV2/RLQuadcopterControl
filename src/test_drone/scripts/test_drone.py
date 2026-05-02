@@ -357,7 +357,7 @@ class Control(Node):
 
         # mat = R.from_euler('ZYX', eu, degrees=True).as_matrix().reshape((9))
         # tt = np.zeros((8,))
-        obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV, [2.11]]).astype(np.float32)
+        obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV, [2.04]]).astype(np.float32)
 
         # print(f"OBSERVATION {obs}")
 
@@ -694,7 +694,7 @@ class Control(Node):
 
         # print("ACC: ", self.vehicle.LA[2])
 
-        if self.y <= 1000:
+        if self.y <= 10000000000:
         # if True:
             self.vehicle.offboard_control("position")
             self.vehicle.set_trajectory([0, 0, -4.0])
