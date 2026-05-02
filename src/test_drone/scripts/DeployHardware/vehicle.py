@@ -1,10 +1,7 @@
-import rclpy
 from rclpy.node import Node
 from px4_msgs.msg import VehicleOdometry, SensorCombined, VehicleRatesSetpoint, TrajectorySetpoint, VehicleCommand, VehicleStatus, OffboardControlMode, VehicleAttitude, VehicleTorqueSetpoint, ActuatorMotors, VehicleLocalPosition
 from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy, QoSDurabilityPolicy
-import torch
 from enum import IntEnum
-import numpy as np
 
 class PX4FlightMode(IntEnum):
     MANUAL = 1
