@@ -28,8 +28,8 @@ class Control(Node):
         self.time = time.time()    
         self.vehicle = Vehicle(self)
         self.target = target_pos
-        self.i = 0
         self.y = 0
+        self.kkk = 0
    
         self.model = LoadONNX("/home/vasudevan/test_model/test_rigour_1")
 
@@ -147,8 +147,7 @@ class Control(Node):
             self.errors = math.sqrt((self.infinty[self.wp_num][0] - self.vehicle.pos[0])**2 + (self.infinty[self.wp_num][1] - self.vehicle.pos[1])**2)
 
         self.erros.append(self.errors)
-
-        if self.errors <= 0.1 and self.errors != 0:
+        if self.error <= 0.1 and self.errors != 0:
             self.wp_num += 1
         if self.wp_num >= 1000:
             print("MEAN ERROR: ", sum(self.erros)/len(self.erros))
