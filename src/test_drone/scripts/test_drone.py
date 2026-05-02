@@ -320,7 +320,7 @@ class Control(Node):
 
         # print(curr[2])
 
-        curr[2] = 1.0 - curr[2]
+        curr[2] = 0.5 - curr[2]
         curr[0] = 0.0 - curr[0]
         curr[1] = 0.0 - curr[1]
 
@@ -697,7 +697,7 @@ class Control(Node):
         if self.y <= 1000:
         # if True:
             self.vehicle.offboard_control("position")
-            self.vehicle.set_trajectory([0, 0, -1.0])
+            self.vehicle.set_trajectory([0, 0, -0.5])
         # self.vehicle.offboard_control("position")
         # self.vehicle.set_trajectory([0, 0, -1.0])
         else:
