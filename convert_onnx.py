@@ -32,7 +32,7 @@ def convert_network():
     # ------------------------------------------------------------
     # Load rl_games PPO checkpoint
     # ------------------------------------------------------------
-    checkpoint = torch.load("gen_ppo.pth", map_location="cpu", weights_only=False)
+    checkpoint = torch.load("02_only1.pth", map_location="cpu", weights_only=False)
     # print(checkpoint.keys())
     # rl_games stores weights under "model"
     model_state_dict = checkpoint["model"]
@@ -80,7 +80,7 @@ def convert_network():
     torch.onnx.export(
         actor_model,
         sample_input,
-        "test_rigour_1.onnx",
+        "test_rigour_2.onnx",
         export_params=True,
         opset_version=17,
         do_constant_folding=True,

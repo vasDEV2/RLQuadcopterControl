@@ -73,7 +73,7 @@ class Control(Node):
         # self.model = ModelLoader("policy.pt")
         # self.model = LoadONNX("/home/vasudevan/Desktop/actor_random2.onnx")
         # self.model = LoadONNX("/home/vasudevan/Desktop/actor_nh2.onnx")
-        self.model = LoadONNX("/home/vasudevan/test_model/test_rigour_1")
+        self.model = LoadONNX("/home/vasudevan/test_model/test_rigour_2.onnx")
         # self.policy = LoadONNX("/home/vasudevan/Documents/policy_test_1.onnx")
 
         self.action_storage = []
@@ -320,9 +320,9 @@ class Control(Node):
 
         # print(curr[2])
 
-        curr[2] = 4.0/5 - curr[2]/5
-        curr[0] = 0.0/5 - curr[0]/5
-        curr[1] = 0.0/5 - curr[1]/5
+        curr[2] = 1.0 - curr[2]
+        curr[0] = 0.0 - curr[0]
+        curr[1] = 0.0 - curr[1]
 
         # curr /= 5
         # print(f"pos: {self.vehicle.pos}")
@@ -694,10 +694,10 @@ class Control(Node):
 
         # print("ACC: ", self.vehicle.LA[2])
 
-        if self.y <= 10000000000:
+        if self.y <= 1000:
         # if True:
             self.vehicle.offboard_control("position")
-            self.vehicle.set_trajectory([0, 0, -4.0])
+            self.vehicle.set_trajectory([0, 0, -1.0])
         # self.vehicle.offboard_control("position")
         # self.vehicle.set_trajectory([0, 0, -1.0])
         else:
