@@ -13,6 +13,7 @@ from scipy.spatial.transform import Rotation as R
 import numpy as np
 from scipy.spatial.transform import Rotation as R
 import pickle
+from matplotlib import pyplot as plt
 
 def gravity_in_frd(px4_quat, vector):
     """
@@ -140,9 +141,18 @@ class Control(Node):
         self.adaption_vector = np.zeros((8))
         self.yo = False
         self.kkk = 0
-
-        self.infinty = self.generate_infinity()
+        self.infinty = self.generate_infinity(num_points=1000)
+        print(self.infinty)
+        self.infinty = self.infinty
+        print(self.infinty)
+        # self.infinty = [(5, 5), (4,5), (3,5), (2, 5)]
         self.wp_num = 0
+        self.erros = []
+        self.errors = 0
+        self.error_plot_vxv = []
+        self.error_plot_vyv = []
+        self.error_plot_vxc = []
+        self.error_plot_vyc = []
 
 
     def generate_infinity(self, num_points=1000, scale=1.0):
@@ -326,6 +336,7 @@ class Control(Node):
         curr[1] = wp[1]/5 - curr[1]/5
 
         self.error = math.sqrt(curr[0]**2 + curr[1]**2)
+        print(f"ERRRORRR: {self.error}")
         # curr /= 5
         # print(f"pos: {self.vehicle.pos}")
         # print(f'HEIGHT: {curr[2]}')
@@ -696,10 +707,23 @@ class Control(Node):
 
         # print("ACC: ", self.vehicle.LA[2])
 
-        if self.y <= 1000:
+        if self.y <= 2000:
         # if True:
             self.vehicle.offboard_control("position")
-            self.vehicle.set_trajectory([0, 0, -4.0])
+            if self.y <= 2000:
+                self.vehicle.set_trajectory([0, 0, -4.0])
+            # self.vehicle.set_trajectory([0, 0, -4.0])
+            else:
+                print("yoo")
+                print(self.wp_num)
+                self.vehicle.set_trajectory([self.infinty[self.wp_num][0], self.infinty[self.wp_num][1], -4.0])
+                self.error_plot_vxv.append(self.vehicle.pos[0])
+                self.error_plot_vyv.append(self.vehicle.pos[1])
+                print(f"TATRGET: {[self.infinty[self.wp_num][0], self.infinty[self.wp_num][1], -4.0]}")
+                # self.vehicle.set_trajectory([5, 5, -4.0])
+                # print(f"X: {self.infinty[self.wp_num][0]}")
+                print(f"X_V: {self.vehicle.pos[0]}")
+                self.errors = math.sqrt((self.infinty[self.wp_num][0] - self.vehicle.pos[0])**2 + (self.infinty[self.wp_num][1] - self.vehicle.pos[1])**2) 
         # self.vehicle.offboard_control("position")
         # self.vehicle.set_trajectory([0, 0, -1.0])
         else:
@@ -707,6 +731,10 @@ class Control(Node):
         
             self.vehicle.offboard_control()
             self.vehicle.publish_ctbr(thrust)
+            self.errors = math.sqrt((self.infinty[self.wp_num][0] - self.vehicle.pos[0])**2 + (self.infinty[self.wp_num][1] - self.vehicle.pos[1])**2)
+
+            self.error_plot_vxv.append(self.vehicle.pos[0])
+            self.error_plot_vyv.append(self.vehicle.pos[1])
         
             # if self.y >= 13000 and self.y <=20000: 
             #     self.action_storage.append(self.action_history)
@@ -718,10 +746,17 @@ class Control(Node):
 
             #     print("SAVED FILE!")
 
-        if self.error <= 0.1:
+        print("ACTUAL ERROR: ", self.errors)
+        self.erros.append(self.errors)
+
+        if self.error <= 0.1 and self.errors != 0:
             self.wp_num += 1
         if self.wp_num >= 1000:
-            self.wp_num = 0
+            print("MEAN ERROR: ", sum(self.erros)/len(self.erros))
+            plt.plot(self.error_plot_vxv, self.error_plot_vyv)
+            plt.plot(self.infinty[:, 0], self.infinty[:, 1])
+            plt.show()
+            # self.wp_num = 0
         
        
 

@@ -71,6 +71,7 @@ class Vehicle():
         self.odom = True
 
         self.pos = [msg.y, msg.x, -msg.z]
+        # self.pos = [msg.x, msg.y, -msg.z]
         self.LV = [msg.vy, msg.vx, -msg.vz]
         # self.LV = msg.velocity/10
         # self.LV[2] = -self.LV[2]
