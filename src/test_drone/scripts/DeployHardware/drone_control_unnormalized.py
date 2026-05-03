@@ -31,8 +31,8 @@ class Control(Node):
         self.y = 0
         self.kkk = 0
    
-        self.model = LoadONNX("/home/vasudevan/test_model/models/test_rigour_1.onnx")
-        self.timer = self.create_timer(0.01, self.timer_callback)
+        self.model = LoadONNX("/home/vasudevan/test_model/models/test_rigour_2.onnx")
+        self.timer = self.create_timer(0.004, self.timer_callback)
 
     def direct_motor_rebrand(self, wp = [0.0, 0.0], height=1.0, T_W=2.11):
 
@@ -40,9 +40,9 @@ class Control(Node):
         curr = self.vehicle.pos.copy()
 
 
-        curr[2] = height/5 - curr[2]/5
-        curr[0] = wp[0]/5 - curr[0]/5
-        curr[1] = wp[1]/5 - curr[1]/5
+        curr[2] = height - curr[2]
+        curr[0] = wp[0] - curr[0]
+        curr[1] = wp[1] - curr[1]
 
         self.error = math.sqrt(curr[0]**2 + curr[1]**2)
 
@@ -87,7 +87,7 @@ class Control(Node):
             self.vehicle.enable_offboard()
             return
         
-        if self.y%100 == 0:
+        if self.y%250 == 0:
             self.kkk += time.time() - self.time
             self.time = time.time()
             # self.kkk += s
@@ -97,7 +97,7 @@ class Control(Node):
 
         self.y += 1
 
-        if self.y <= 1000:
+        if self.y <= 2500:
             self.vehicle.offboard_control("position")
             self.vehicle.set_trajectory([0, 0, -1.0])
         else:

@@ -73,7 +73,7 @@ class Control(Node):
         # self.model = ModelLoader("policy.pt")
         # self.model = LoadONNX("/home/vasudevan/Desktop/actor_random2.onnx")
         # self.model = LoadONNX("/home/vasudevan/Desktop/actor_nh2.onnx")
-        self.model = LoadONNX("/home/vasudevan/test_model/test_rigour_2.onnx")
+        self.model = LoadONNX("/home/vasudevan/test_model/models/test_rigour_1.onnx")
         # self.policy = LoadONNX("/home/vasudevan/Documents/policy_test_1.onnx")
 
         self.action_storage = []
@@ -320,9 +320,9 @@ class Control(Node):
 
         # print(curr[2])
 
-        curr[2] = 0.5 - curr[2]
-        curr[0] = 0.0 - curr[0]
-        curr[1] = 0.0 - curr[1]
+        curr[2] = 1.0/5 - curr[2]/5
+        curr[0] = 0.0/5 - curr[0]/5
+        curr[1] = 0.0/5 - curr[1]/5
 
         # curr /= 5
         # print(f"pos: {self.vehicle.pos}")
@@ -357,7 +357,7 @@ class Control(Node):
 
         # mat = R.from_euler('ZYX', eu, degrees=True).as_matrix().reshape((9))
         # tt = np.zeros((8,))
-        obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV, [2.04]]).astype(np.float32)
+        obs = np.concatenate([curr, mat, self.vehicle.LV, self.vehicle.AV, [2.11]]).astype(np.float32)
 
         # print(f"OBSERVATION {obs}")
 
@@ -697,7 +697,7 @@ class Control(Node):
         if self.y <= 1000:
         # if True:
             self.vehicle.offboard_control("position")
-            self.vehicle.set_trajectory([0, 0, -0.5])
+            self.vehicle.set_trajectory([0, 0, -1.0])
         # self.vehicle.offboard_control("position")
         # self.vehicle.set_trajectory([0, 0, -1.0])
         else:
