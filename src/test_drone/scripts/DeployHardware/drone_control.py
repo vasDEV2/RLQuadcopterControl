@@ -31,7 +31,7 @@ class Control(Node):
         self.y = 0
         self.kkk = 0
    
-        self.model = LoadONNX("/home/vasudevan/test_model/models/test_rigour_1.onnx")
+        self.model = LoadONNX("/test_model/models/test_rigour_1.onnx")
         self.timer = self.create_timer(0.01, self.timer_callback)
 
     def direct_motor_rebrand(self, wp = [0.0, 0.0], height=1.0, T_W=2.11):

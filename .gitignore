@@ -7,6 +7,6 @@ policy.pt
 action_history.pkl
 actions_mod.npz
 test_rigour_1
-test_rigour_1.onnx
+# test_rigour_1.onnx
 gen_ppo.pth
 convert_onnx.py
