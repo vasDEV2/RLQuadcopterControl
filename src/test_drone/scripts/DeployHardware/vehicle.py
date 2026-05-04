@@ -49,7 +49,8 @@ class Vehicle():
         self.odom = False
 
         # ---- Examples: Create a subscription ----
-        self.odometry_sub = self.node.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.odometry_callback, qos_sub)
+        # self.odometry_sub = self.node.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.odometry_callback, qos_sub)
+        self.odometry_sub = self.node.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, qos_sub)
         self.imu_gyro_sub = self.node.create_subscription(SensorCombined, '/fmu/out/sensor_combined', self.imu_gyro_callback, qos_sub)
         # self.imu_gyro_sub = self.node.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.imu_gyro_callback, qos_sub)
         self.status_sub = self.node.create_subscription(VehicleStatus, 'fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_sub)
@@ -65,10 +66,14 @@ class Vehicle():
 
     def odometry_callback(self, msg):
 
+        # print("WORKING ")
+
         self.odom = True
 
-        self.pos = [msg.y, msg.x, -msg.z]
-        self.LV = [msg.vy, msg.vx, -msg.vz]
+        # self.pos = [msg.y, msg.x, -msg.z]
+        self.pos = [msg.position[1], msg.position[0], -msg.position[2]]
+        # self.LV = [msg.vy, msg.vx, -msg.vz]
+        self.LV = [msg.velocity[1], msg.velocity[0], -msg.velocity[2]]
         # self.LV = msg.velocity/10
         # self.LV[2] = -self.LV[2]
 

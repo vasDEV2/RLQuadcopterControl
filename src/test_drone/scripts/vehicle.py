@@ -53,7 +53,7 @@ class Vehicle():
 
         # ---- Examples: Create a subscription ----
         # self.odometry_sub = self.node.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_local_position_v1', self.odometry_callback, qos_sub)
-        self.odometry_sub = self.node.create_subscription(VehicleLocalPosition, '/fmu/out/vehicle_odometry', self.odometry_callback, qos_sub)
+        self.odometry_sub = self.node.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.odometry_callback, qos_sub)
         self.imu_gyro_sub = self.node.create_subscription(SensorCombined, '/fmu/out/sensor_combined', self.imu_gyro_callback, qos_sub)
         # self.imu_gyro_sub = self.node.create_subscription(VehicleOdometry, '/fmu/out/vehicle_odometry', self.imu_gyro_callback, qos_sub)
         self.status_sub = self.node.create_subscription(VehicleStatus, 'fmu/out/vehicle_status_v1', self.vehicle_status_callback, qos_sub)

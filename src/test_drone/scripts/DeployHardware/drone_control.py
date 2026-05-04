@@ -93,7 +93,7 @@ class Control(Node):
             # self.kkk += s
             print(f"Time elapsed {self.kkk}")
 
-        thrust = self.direct_motor_rebrand(height=1.0, T_W=2.5)
+        thrust = self.direct_motor_rebrand(height=1.0, T_W=3.0)
 
         self.y += 1
 

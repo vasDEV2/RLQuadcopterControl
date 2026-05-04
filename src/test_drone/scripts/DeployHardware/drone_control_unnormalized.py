@@ -32,7 +32,7 @@ class Control(Node):
         self.kkk = 0
    
         self.model = LoadONNX("/home/vasudevan/test_model/models/test_rigour_2.onnx")
-        self.timer = self.create_timer(0.004, self.timer_callback)
+        self.timer = self.create_timer(0.01, self.timer_callback)
 
     def direct_motor_rebrand(self, wp = [0.0, 0.0], height=1.0, T_W=2.11):
 
@@ -87,17 +87,17 @@ class Control(Node):
             self.vehicle.enable_offboard()
             return
         
-        if self.y%250 == 0:
+        if self.y%100 == 0:
             self.kkk += time.time() - self.time
             self.time = time.time()
             # self.kkk += s
             print(f"Time elapsed {self.kkk}")
 
-        thrust = self.direct_motor_rebrand(height=1.0, T_W=2.5)
+        thrust = self.direct_motor_rebrand(height=1.0, T_W=3.0)
 
         self.y += 1
 
-        if self.y <= 2500:
+        if self.y <= 1000:
             self.vehicle.offboard_control("position")
             self.vehicle.set_trajectory([0, 0, -1.0])
         else:
